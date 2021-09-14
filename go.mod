@@ -1,4 +1,4 @@
-module simple-grpc-acl
+module github.com/miqdadyyy/simple-grpc-acl
 
 go 1.16
 

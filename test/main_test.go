@@ -1,10 +1,10 @@
 package test
 
 import (
+	"github.com/miqdadyyy/simple-grpc-acl/pkg"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"os"
-	"simple-grpc-acl/pkg"
 	"testing"
 )
 
