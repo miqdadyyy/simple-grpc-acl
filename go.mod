@@ -1,4 +1,4 @@
-module grpc-acl
+module simple-grpc-acl
 
 go 1.16
 
