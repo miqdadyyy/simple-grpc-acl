@@ -3,8 +3,8 @@ package test
 import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"grpc-acl/pkg"
 	"os"
+	"simple-grpc-acl/pkg"
 	"testing"
 )
 
