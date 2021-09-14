@@ -25,5 +25,6 @@ func (g *GrpcServerAuthorization) Authorize(ctx context.Context, permission *Per
 }
 
 func (g *GrpcServerAuthorization) AuthorizeWithTeam(ctx context.Context, permission *Permission, teamId string, action ...string) {
+	//model := g.GetModelFromContext(ctx)
 
 }

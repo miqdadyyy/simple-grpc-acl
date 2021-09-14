@@ -42,7 +42,7 @@ func (acl *GrpcAcl) GetPermissionByName(name string) *Permission {
 	var permission Permission
 	if err := acl.DB.Find(&permission).
 		Where("name", name).Error; err != nil {
-			return nil
+		return nil
 	}
 
 	return &permission
@@ -70,7 +70,7 @@ func (acl *GrpcAcl) GetAllRoles() ([]Role, error) {
 	return roles, nil
 }
 
-func (acl *GrpcAcl) GetRoleByName(name string) *Role{
+func (acl *GrpcAcl) GetRoleByName(name string) *Role {
 	var role Role
 	if err := acl.DB.Find(&role).
 		Where("name", name).Error; err != nil {
@@ -93,7 +93,7 @@ func (acl *GrpcAcl) AssignPermissionById(resource RoleAndPermission, permissionI
 				Valid: true,
 				Int64: permissionId,
 			},
-			TeamId: resource.GetTeamId(),
+			TeamId:       resource.GetTeamId(),
 			ResourceId:   resource.GetResourceId(),
 			ResourceName: resource.GetResourceName(),
 			Action:       action,
@@ -157,9 +157,12 @@ func (acl *GrpcAcl) GetModelPermissions(model RoleAndPermission) ([]Permission, 
 	var permissions []Permission
 
 	if err := acl.DB.Find(&assignedPermissions).
-		Where("resource_name", model.GetResourceName()).
-		Where("resource_id", model.GetResourceId()).
-		Where("team_id", model.GetTeamId()).Error; err != nil {
+		Joins("LEFT JOIN assigned_permissions as AP on assigned_permissions.resource_id = AP.role_id AND assigned_permissions.resource_name = 'role'").
+		Where("AP.resource_name = ?", model.GetResourceName()).
+		Where("AP.resource_id = ?", model.GetResourceId()).
+		Or("assigned_permissions.resource_name = ?", model.GetResourceName()).
+		Where("assigned_permissions.resource_id = ?", model.GetResourceId()).
+		Where("assigned_permissions.role_id IS NULL").Error; err != nil {
 		return nil, err
 	}
 
@@ -169,24 +172,54 @@ func (acl *GrpcAcl) GetModelPermissions(model RoleAndPermission) ([]Permission, 
 
 	if err := acl.DB.Find(&permissions).
 		Where("id", permissionIds).Error; err != nil {
-			return nil, err
+		return nil, err
 	}
 
 	return permissions, nil
 }
 
-func (acl *GrpcAcl) CheckPermissionInRole(permission *Permission, role *Role, actions ...string) (bool) {
+func (acl *GrpcAcl) CheckPermissionInRole(permission *Permission, role *Role, actions ...string) bool {
 	return acl.CheckPermissionInModel(permission, role, actions...)
 }
 
 func (acl *GrpcAcl) CheckPermissionInModel(permission *Permission, model RoleAndPermission, actions ...string) bool {
-	var assignedPermissions []AssignedPermission
-	acl.DB.Where("")
-	if err := acl.DB.Find(&assignedPermissions).
-		Where("permission_id", permission.ID).
-		Where("resource_name", model.GetResourceName()).
-		Where("resource_id", model.GetResourceId()).
-		Where("action", actions).Error; err != nil {
+	var assignedPermission AssignedPermission
+	if err := acl.DB.Model(&assignedPermission).
+		Joins("LEFT JOIN assigned_permissions as AP on assigned_permissions.resource_id = AP.role_id AND assigned_permissions.resource_name = 'role'").
+		Where("AP.resource_name = ?", model.GetResourceName()).
+		Where("AP.resource_id = ?", model.GetResourceId()).
+		Where("assigned_permissions.permission_id = ?", permission.ID).
+		Where("assigned_permissions.action", actions).
+		Or("assigned_permissions.resource_name = ?", model.GetResourceName()).
+		Where("assigned_permissions.resource_id = ?", model.GetResourceId()).
+		Where("assigned_permissions.role_id IS NULL").
+		Where("assigned_permissions.permission_id = ?", permission.ID).
+		Where("assigned_permissions.action", actions).
+		First(&assignedPermission).
+		Error; err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (acl *GrpcAcl) CheckPermissionInModelWithTeam(permission *Permission, model RoleAndPermission, teamId string, actions ...string) bool {
+	var assignedPermission AssignedPermission
+	if err := acl.DB.Model(&assignedPermission).
+		Joins("LEFT JOIN assigned_permissions as AP on assigned_permissions.resource_id = AP.role_id AND assigned_permissions.resource_name = 'role'").
+		Where("AP.resource_name = ?", model.GetResourceName()).
+		Where("AP.resource_id = ?", model.GetResourceId()).
+		Where("assigned_permissions.permission_id = ?", permission.ID).
+		Where("assigned_permissions.action", actions).
+		Where("assigned_permissions.team_id = ?", teamId).
+		Or("assigned_permissions.resource_name = ?", model.GetResourceName()).
+		Where("assigned_permissions.resource_id = ?", model.GetResourceId()).
+		Where("assigned_permissions.role_id IS NULL").
+		Where("assigned_permissions.permission_id = ?", permission.ID).
+		Where("assigned_permissions.action", actions).
+		Where("assigned_permissions.team_id = ?", teamId).
+		First(&assignedPermission).
+		Error; err != nil {
 		return false
 	}
 
