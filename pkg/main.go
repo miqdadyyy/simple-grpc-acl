@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"database/sql"
+	"errors"
 	"gorm.io/gorm"
 )
 
@@ -80,6 +81,15 @@ func (acl *GrpcAcl) GetRoleByName(name string) *Role {
 	return &role
 }
 
+func (acl *GrpcAcl) AssignPermissionByName(resource RoleAndPermission, permissionName string, actions ...string) error {
+	permission := acl.GetPermissionByName(permissionName);
+	if permission == nil {
+		return errors.New("Permission not found")
+	}
+
+	return acl.AssignPermission(resource, permission, actions...)
+}
+
 func (acl *GrpcAcl) AssignPermission(resource RoleAndPermission, permission *Permission, actions ...string) error {
 	return acl.AssignPermissionById(resource, permission.ID, actions...)
 }
@@ -149,6 +159,50 @@ func (acl *GrpcAcl) GetModelRoles(model RoleAndPermission) []*Role {
 	}
 
 	return roles
+}
+
+func (acl *GrpcAcl) AssignRoleByName(resource RoleAndPermission, roleName string, teamId string) error {
+	role := acl.GetRoleByName(roleName);
+	if role == nil {
+		return errors.New("Role not found")
+	}
+
+	return acl.AssignRole(resource, role, teamId)
+}
+
+func (acl *GrpcAcl) AssignRole(resource RoleAndPermission, role *Role, teamId string) error {
+	return acl.AssignRoleById(resource, role.ID, teamId)
+}
+
+func (acl *GrpcAcl) AssignRoleById(resource RoleAndPermission, roleId int64, teamId string) error {
+	var team sql.NullString
+	if teamId == "" {
+		team = sql.NullString{
+			Valid: true,
+			String: teamId,
+		}
+	} else {
+		team = sql.NullString{
+			Valid: false,
+		}
+	}
+
+
+	assignedPermission := AssignedPermission{
+		RoleId: sql.NullInt64{
+			Valid: true,
+			Int64: roleId,
+		},
+		TeamId: team,
+		ResourceName: resource.GetResourceName(),
+		ResourceId: resource.GetResourceId(),
+	}
+
+	if err := acl.DB.Create(&assignedPermission).Error; err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (acl *GrpcAcl) GetModelPermissions(model RoleAndPermission) ([]Permission, error) {
