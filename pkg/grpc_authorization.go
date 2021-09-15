@@ -14,6 +14,12 @@ type GrpcServerAuthorizationInterface interface {
 	GetModelFromContext(ctx context.Context) RoleAndPermission
 }
 
+func NewGrpcServerAuthorization(acl *GrpcAcl) *GrpcServerAuthorization {
+	return &GrpcServerAuthorization{
+		acl: acl,
+	}
+}
+
 func (g *GrpcServerAuthorization) Authorize(ctx context.Context, permission *Permission, action ...string) error {
 	model := g.GetModelFromContext(ctx)
 	allowed := g.acl.CheckPermissionInModel(permission, model, action...)
