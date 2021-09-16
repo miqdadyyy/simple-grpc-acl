@@ -176,7 +176,7 @@ func (acl *GrpcAcl) AssignRole(resource RoleAndPermission, role *Role, teamId st
 
 func (acl *GrpcAcl) AssignRoleById(resource RoleAndPermission, roleId int64, teamId string) error {
 	var team sql.NullString
-	if teamId == "" {
+	if teamId != "" {
 		team = sql.NullString{
 			Valid: true,
 			String: teamId,
@@ -260,12 +260,15 @@ func (acl *GrpcAcl) CheckPermissionInModel(permission *Permission, model RoleAnd
 func (acl *GrpcAcl) CheckPermissionInModelWithTeam(permission *Permission, model RoleAndPermission, teamId string, actions ...string) bool {
 	var assignedPermission AssignedPermission
 	if err := acl.DB.Model(&assignedPermission).
-		Joins("LEFT JOIN assigned_permissions as AP on assigned_permissions.resource_id = AP.role_id AND assigned_permissions.resource_name = 'role'").
+		Joins("LEFT JOIN assigned_permissions AS AP " +
+			"ON assigned_permissions.resource_id = AP.role_id " +
+			"AND assigned_permissions.resource_name = 'role' " +
+			"AND AP.team_id = ?", teamId).
 		Where("AP.resource_name = ?", model.GetResourceName()).
 		Where("AP.resource_id = ?", model.GetResourceId()).
+		Where("AP.team_id = ?", teamId).
 		Where("assigned_permissions.permission_id = ?", permission.ID).
 		Where("assigned_permissions.action", actions).
-		Where("assigned_permissions.team_id = ?", teamId).
 		Or("assigned_permissions.resource_name = ?", model.GetResourceName()).
 		Where("assigned_permissions.resource_id = ?", model.GetResourceId()).
 		Where("assigned_permissions.role_id IS NULL").

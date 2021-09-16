@@ -20,8 +20,7 @@ func NewGrpcServerAuthorization(acl *GrpcAcl) *GrpcServerAuthorization {
 	}
 }
 
-func (g *GrpcServerAuthorization) Authorize(ctx context.Context, permission *Permission, action ...string) error {
-	model := g.GetModelFromContext(ctx)
+func (g *GrpcServerAuthorization) Authorize(model RoleAndPermission, permission *Permission, action ...string) error {
 	allowed := g.acl.CheckPermissionInModel(permission, model, action...)
 	if !allowed {
 		return errors.New("Current user doesn't has permission in this resource")
@@ -30,9 +29,9 @@ func (g *GrpcServerAuthorization) Authorize(ctx context.Context, permission *Per
 	return nil
 }
 
-func (g *GrpcServerAuthorization) AuthorizeWithTeam(ctx context.Context, permission *Permission, teamId string, action ...string) error {
-	model := g.GetModelFromContext(ctx)
+func (g *GrpcServerAuthorization) AuthorizeWithTeam(model RoleAndPermission, permission *Permission, teamId string, action ...string) error {
 	allowed := g.acl.CheckPermissionInModelWithTeam(permission, model, teamId, action...)
+
 	if !allowed {
 		return errors.New("Current user doesn't has permission in this resource")
 	}
