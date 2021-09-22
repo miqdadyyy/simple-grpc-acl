@@ -73,8 +73,9 @@ func (acl *GrpcAcl) GetAllRoles() ([]Role, error) {
 
 func (acl *GrpcAcl) GetRoleByName(name string) *Role {
 	var role Role
-	if err := acl.DB.Find(&role).
-		Where("name", name).Error; err != nil {
+	if err := acl.DB.
+		Where("name", name).
+		Find(&role).Error; err != nil {
 		return nil
 	}
 
