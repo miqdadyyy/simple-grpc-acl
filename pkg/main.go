@@ -41,8 +41,8 @@ func (acl *GrpcAcl) GetAllPermissions() ([]Permission, error) {
 
 func (acl *GrpcAcl) GetPermissionByName(name string) *Permission {
 	var permission Permission
-	if err := acl.DB.Find(&permission).
-		Where("name", name).Error; err != nil {
+	if err := acl.DB.Where("name", name).
+		Find(&permission).Error; err != nil {
 		return nil
 	}
 
