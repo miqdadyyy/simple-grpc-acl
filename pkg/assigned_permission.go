@@ -2,6 +2,8 @@ package pkg
 
 import (
 	"database/sql"
+	"gorm.io/gorm"
+	"time"
 )
 
 type AssignedPermission struct {
@@ -12,4 +14,9 @@ type AssignedPermission struct {
 	ResourceId   string         `gorm:"column:resource_id;not null;" json:"resource_id"`
 	ResourceName string         `gorm:"column:resource_name;not null;" json:"resource_name"`
 	Action       string         `gorm:"column:action;not null;" json:"action"`
+	Status       string         `gorm:"column:status" json:"status"`
+	Remarks      string         `gorm:"column:remarks" json:"remarks"`
+	CreatedAt    time.Time      `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt    time.Time      `gorm:"column:updated_at" json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at" json:"deleted_at"`
 }
