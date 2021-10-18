@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"gorm.io/gorm"
+	"time"
 )
 
 type RoleAndPermission interface {
@@ -83,7 +84,7 @@ func (acl *GrpcAcl) GetRoleByName(name string) *Role {
 }
 
 func (acl *GrpcAcl) AssignPermissionByName(resource RoleAndPermission, permissionName string, actions ...string) error {
-	permission := acl.GetPermissionByName(permissionName);
+	permission := acl.GetPermissionByName(permissionName)
 	if permission == nil {
 		return errors.New("Permission not found")
 	}
@@ -163,23 +164,32 @@ func (acl *GrpcAcl) GetModelRoles(model RoleAndPermission) []*Role {
 }
 
 func (acl *GrpcAcl) AssignRoleByName(resource RoleAndPermission, roleName string, teamId string) error {
-	role := acl.GetRoleByName(roleName);
+	role := acl.GetRoleByName(roleName)
 	if role == nil {
 		return errors.New("Role not found")
 	}
 
-	return acl.AssignRole(resource, role, teamId)
+	return acl.AssignRole(resource, role, teamId, "")
 }
 
-func (acl *GrpcAcl) AssignRole(resource RoleAndPermission, role *Role, teamId string) error {
-	return acl.AssignRoleById(resource, role.ID, teamId)
+func (acl *GrpcAcl) AssignRoleByNameWithStatus(resource RoleAndPermission, roleName string, teamId string, status string) error {
+	role := acl.GetRoleByName(roleName)
+	if role == nil {
+		return errors.New("Role not found")
+	}
+
+	return acl.AssignRole(resource, role, teamId, status)
 }
 
-func (acl *GrpcAcl) AssignRoleById(resource RoleAndPermission, roleId int64, teamId string) error {
+func (acl *GrpcAcl) AssignRole(resource RoleAndPermission, role *Role, teamId string, status string) error {
+	return acl.AssignRoleById(resource, role.ID, teamId, status)
+}
+
+func (acl *GrpcAcl) AssignRoleById(resource RoleAndPermission, roleId int64, teamId string, status string) error {
 	var team sql.NullString
 	if teamId != "" {
 		team = sql.NullString{
-			Valid: true,
+			Valid:  true,
 			String: teamId,
 		}
 	} else {
@@ -188,15 +198,17 @@ func (acl *GrpcAcl) AssignRoleById(resource RoleAndPermission, roleId int64, tea
 		}
 	}
 
-
 	assignedPermission := AssignedPermission{
 		RoleId: sql.NullInt64{
 			Valid: true,
 			Int64: roleId,
 		},
-		TeamId: team,
+		TeamId:       team,
+		Status:       status,
 		ResourceName: resource.GetResourceName(),
-		ResourceId: resource.GetResourceId(),
+		ResourceId:   resource.GetResourceId(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	if err := acl.DB.Create(&assignedPermission).Error; err != nil {
@@ -261,9 +273,9 @@ func (acl *GrpcAcl) CheckPermissionInModel(permission *Permission, model RoleAnd
 func (acl *GrpcAcl) CheckPermissionInModelWithTeam(permission *Permission, model RoleAndPermission, teamId string, actions ...string) bool {
 	var assignedPermission AssignedPermission
 	if err := acl.DB.Model(&assignedPermission).
-		Joins("LEFT JOIN assigned_permissions AS AP " +
-			"ON assigned_permissions.resource_id = AP.role_id " +
-			"AND assigned_permissions.resource_name = 'role' " +
+		Joins("LEFT JOIN assigned_permissions AS AP "+
+			"ON assigned_permissions.resource_id = AP.role_id "+
+			"AND assigned_permissions.resource_name = 'role' "+
 			"AND AP.team_id = ?", teamId).
 		Where("AP.resource_name = ?", model.GetResourceName()).
 		Where("AP.resource_id = ?", model.GetResourceId()).
@@ -282,6 +294,38 @@ func (acl *GrpcAcl) CheckPermissionInModelWithTeam(permission *Permission, model
 	}
 
 	return true
+}
+
+func (acl *GrpcAcl) CheckModelRoleWithTeam(model RoleAndPermission, role *Role, teamId string) bool {
+	roles := acl.GetModelRoles(model)
+	for _, modelRole := range roles {
+		if role.ID == modelRole.ID {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (acl *GrpcAcl) RetractModelFromTeam(model RoleAndPermission, teamId string) error {
+	if err := acl.DB.Delete(&AssignedPermission{}).
+		Where("resource_name = ?", model.GetResourceName()).
+		Where("resource_id = ?", model.GetResourceId()).
+		Where("team_id = ?", teamId).Error; err != nil {
+		return err
+	}
+	
+	return nil
+}
+
+func (acl *GrpcAcl) RetractAllTeamMember(teamId string) error {
+	if err := acl.DB.Model(&AssignedPermission{}).
+		Where("team_id = ?", teamId).
+		Update("status", "inactive").Error; err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func New(db *gorm.DB) *GrpcAcl {
