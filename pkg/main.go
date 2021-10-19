@@ -313,7 +313,7 @@ func (acl *GrpcAcl) UpdatePermissionStatus(model RoleAndPermission, teamId strin
 		Where("resource_name = ?", model.GetResourceName()).
 		Where("resource_id = ?", model.GetResourceId()).
 		Where("team_id = ?", teamId).
-		Update("status = ?", status).Error; err != nil {
+		Update("status", status).Error; err != nil {
 			return err
 	}
 
