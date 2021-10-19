@@ -309,7 +309,8 @@ func (acl *GrpcAcl) CheckModelRoleWithTeam(model RoleAndPermission, role *Role, 
 }
 
 func (acl *GrpcAcl) UpdatePermissionStatus(model RoleAndPermission, teamId string, status string) error {
-	if err := acl.DB.Where("resource_name = ?", model.GetResourceName()).
+	if err := acl.DB.Model(&AssignedPermission{}).
+		Where("resource_name = ?", model.GetResourceName()).
 		Where("resource_id = ?", model.GetResourceId()).
 		Where("team_id = ?", teamId).
 		Update("status = ?", status).Error; err != nil {
