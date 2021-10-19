@@ -297,21 +297,34 @@ func (acl *GrpcAcl) CheckPermissionInModelWithTeam(permission *Permission, model
 }
 
 func (acl *GrpcAcl) CheckModelRoleWithTeam(model RoleAndPermission, role *Role, teamId string) bool {
-	roles := acl.GetModelRoles(model)
-	for _, modelRole := range roles {
-		if role.ID == modelRole.ID {
-			return true
-		}
+	var permission AssignedPermission
+	if err := acl.DB.Where("role_id = ?", role.ID).
+		Where("resource_name = ?", model.GetResourceName()).
+		Where("resource_id = ?", model.GetResourceId()).
+		Where("team_id = ?", teamId).First(&permission).Error; err != nil {
+		return false
 	}
 
-	return false
+	return true
+}
+
+func (acl *GrpcAcl) UpdatePermissionStatus(model RoleAndPermission, teamId string, status string) error {
+	if err := acl.DB.Where("resource_name = ?", model.GetResourceName()).
+		Where("resource_id = ?", model.GetResourceId()).
+		Where("team_id = ?", teamId).
+		Update("status = ?", status).Error; err != nil {
+			return err
+	}
+
+	return nil
 }
 
 func (acl *GrpcAcl) RetractModelFromTeam(model RoleAndPermission, teamId string) error {
-	if err := acl.DB.Delete(&AssignedPermission{}).
+	if err := acl.DB.
 		Where("resource_name = ?", model.GetResourceName()).
 		Where("resource_id = ?", model.GetResourceId()).
-		Where("team_id = ?", teamId).Error; err != nil {
+		Where("team_id = ?", teamId).
+		Delete(&AssignedPermission{}).Error; err != nil {
 		return err
 	}
 	
