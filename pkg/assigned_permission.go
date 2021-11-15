@@ -2,7 +2,6 @@ package pkg
 
 import (
 	"database/sql"
-	"gorm.io/gorm"
 	"time"
 )
 
@@ -18,5 +17,5 @@ type AssignedPermission struct {
 	Remarks      string         `gorm:"column:remarks" json:"remarks"`
 	CreatedAt    time.Time      `gorm:"column:created_at" json:"created_at"`
 	UpdatedAt    time.Time      `gorm:"column:updated_at" json:"updated_at"`
-	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at" json:"deleted_at"`
+	DeletedAt    sql.NullTime   `gorm:"column:deleted_at" json:"deleted_at"`
 }
