@@ -185,6 +185,40 @@ func (acl *GrpcAcl) AssignRole(resource RoleAndPermission, role *Role, teamId st
 	return acl.AssignRoleById(resource, role.ID, teamId, status)
 }
 
+func (acl *GrpcAcl) AssignRoleWithRemarks(resource RoleAndPermission, role *Role, teamId, status, remarks string) error {
+	var team sql.NullString
+	if teamId != "" {
+		team = sql.NullString{
+			Valid:  true,
+			String: teamId,
+		}
+	} else {
+		team = sql.NullString{
+			Valid: false,
+		}
+	}
+
+	assignedPermission := AssignedPermission{
+		RoleId: sql.NullInt64{
+			Valid: true,
+			Int64: role.ID,
+		},
+		TeamId:       team,
+		Status:       status,
+		ResourceName: resource.GetResourceName(),
+		ResourceId:   resource.GetResourceId(),
+		Remarks:      remarks,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+
+	if err := acl.DB.Create(&assignedPermission).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (acl *GrpcAcl) AssignRoleById(resource RoleAndPermission, roleId int64, teamId string, status string) error {
 	var team sql.NullString
 	if teamId != "" {
@@ -207,8 +241,8 @@ func (acl *GrpcAcl) AssignRoleById(resource RoleAndPermission, roleId int64, tea
 		Status:       status,
 		ResourceName: resource.GetResourceName(),
 		ResourceId:   resource.GetResourceId(),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	}
 
 	if err := acl.DB.Create(&assignedPermission).Error; err != nil {
@@ -314,7 +348,7 @@ func (acl *GrpcAcl) UpdatePermissionStatus(model RoleAndPermission, teamId strin
 		Where("resource_id = ?", model.GetResourceId()).
 		Where("team_id = ?", teamId).
 		Update("status", status).Error; err != nil {
-			return err
+		return err
 	}
 
 	return nil
@@ -328,7 +362,7 @@ func (acl *GrpcAcl) RetractModelFromTeam(model RoleAndPermission, teamId string)
 		Delete(&AssignedPermission{}).Error; err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
